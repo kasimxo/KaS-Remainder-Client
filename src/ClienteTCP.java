@@ -84,7 +84,7 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 	
 	
 	public static void getRecordatorios() {
-		send("Get="+nombreUsuario);
+		sinLeer = Integer.parseInt(send("Get="+nombreUsuario));
 	}
 	
 	/**
@@ -184,6 +184,7 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		case 1:
 			break;
 		case 2:
+			getRecordatorios();
 			break;
 		case 0:
 			cerrarSesion();
