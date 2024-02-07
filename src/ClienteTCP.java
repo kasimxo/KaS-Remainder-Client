@@ -27,7 +27,7 @@ public class ClienteTCP {
 			nombreUsuario = sc.nextLine();
 		}
 		
-		iniciarSesion(nombreUsuario);
+		iniciarSesion();
 		
 		while (funcionando) {
 			menu();
@@ -75,7 +75,7 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		System.out.println("-------------------\n");
 	}
 	
-	public static void iniciarSesion(String nombreUsuario) {
+	public static void iniciarSesion() {
 		System.out.println("Iniciando sesion como usuario: " + nombreUsuario);
 		String resultadoInicioSesion = send("Login="+nombreUsuario);
 		System.out.println(resultadoInicioSesion);
@@ -161,7 +161,7 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		System.out.println("Cerrando sesión.");
 		String mensaje = "Exit="+nombreUsuario;
 		System.out.println(mensaje);
-		String respuesta = send(mensaje);
+		String respuesta = send("Exit="+nombreUsuario);
 		System.out.println(respuesta);
 	}
 	
