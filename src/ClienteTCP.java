@@ -14,18 +14,24 @@ public class ClienteTCP {
 	
 	public static void main(String[] args) {
 		
+		logo();
+		
+		
 		nombreUsuario = null;
 		sc = new Scanner(System.in);
 		
 		funcionando = true;
-		
-		logo();
 		
 		
 		while (nombreUsuario == null) {
 			System.out.println("Introduce tu nombre de usuario:");
 			nombreUsuario = sc.nextLine();
 		}
+		
+		//Creamos una tarea que cada X tiempo lista a los usuarios conectados 
+		TimerTask listarUsuarios = new UnreadReminders();
+		Timer timer = new Timer(true);
+		timer.scheduleAtFixedRate(listarUsuarios, 0, 5000);
 		
 		iniciarSesion();
 		
@@ -82,9 +88,22 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		getRecordatorios();
 	}
 	
+	public static void getRecordatoriosNum() {
+		int nuevo = Integer.parseInt(send("GetN="+nombreUsuario));
+		if (nuevo > 0) {
+			// Si hay algún recordatorio sin leer, periódicamente informa al usuario
+			System.out.printf("Tienes %d recordatorios sin leer.\n", nuevo);
+		}
+		if (nuevo != sinLeer) {
+			sinLeer = nuevo;
+		}
+	}
 	
 	public static void getRecordatorios() {
-		sinLeer = Integer.parseInt(send("Get="+nombreUsuario));
+		String rawRecordatorios = send("Get="+nombreUsuario);
+		for(String recordatorio : rawRecordatorios.split(";")) {
+			System.out.println("Mensaje: " + recordatorio);
+		}
 	}
 	
 	/**
@@ -129,7 +148,6 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 				 
 				 
 				 dos.write(mensaje.getBytes());
-				 System.out.println("Esperando respuesta");
 				 
 				 pck = dis.readAllBytes();
 				 respuesta = new String(pck);
@@ -156,6 +174,15 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		return respuesta;
 	 }
 	
+	public static void setRecordatorio() {
+		System.out.println("Introduce el mensaje del recordatorio:");
+		String mensaje = sc.nextLine();
+		System.out.println("Introduce la cantidad de tiempo hasta el recordatorio en segundos:");
+		String rawSegundos = sc.nextLine();
+		String input = String.format("Set=%s;%s;%s", nombreUsuario,rawSegundos,mensaje);
+		String respuesta = send(input);
+		System.out.println(respuesta);
+	}
 	
 	public static void cerrarSesion() {
 		System.out.println("Cerrando sesión.");
@@ -165,23 +192,34 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		System.out.println(respuesta);
 	}
 	
-	public static void menu() {
-		logo();
+	/**
+	 * Este método imprimer el menu, solo lleva lo visual
+	 * Esto permite invocarlo desde el hilo secundario del timer sin afectar al scanner
+	 */
+	public static void printMenu() {
+		
+		//getRecordatoriosNum();
 		
 		System.out.println("Tienes "+sinLeer+" recordatorios no leídos");
 		
-		String[] opciones = {"1. Crear recordatorio", "2. Ver recordatorios sin leer", "0. Salir"};
+		String[] opciones = {"1. Crear recordatorio", "2. Ver recordatorios sin leer", "0. Salir","","Recuerda: Al ver los recordatorios, estos serán eliminados."};
 		
 		System.out.println("");
 		for (String opcion : opciones) {
 			System.out.println(opcion);
 		}
+	}
+	
+	
+	public static void menu() {
+		printMenu();
 		try {
 		String input = sc.nextLine(); 
 		int seleccion = Integer.parseInt(""+input.charAt(0));
 		
 		switch (seleccion) {
 		case 1:
+			setRecordatorio();
 			break;
 		case 2:
 			getRecordatorios();
