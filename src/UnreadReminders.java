@@ -9,7 +9,7 @@ public class UnreadReminders extends TimerTask{
 
 	@Override
 	public void run() {
+		//Simplemente llamamos al método que recupera del servidor los mensajes no leídos
 		ClienteTCP.getRecordatoriosNum();
-		//ClienteTCP.printMenu();
 	}
 }

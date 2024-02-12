@@ -1,6 +1,3 @@
-
-
-//ClienteTCP.java
 import java.io.*;
 import java.net.*; 
 import java.util.*;
@@ -17,6 +14,7 @@ public class ClienteTCP {
 		
 		logo();
 		
+		comprobarServidor();
 		
 		nombreUsuario = null;
 		sc = new Scanner(System.in);
@@ -31,52 +29,14 @@ public class ClienteTCP {
 			iniciarSesion();
 		}
 		
-		
-		
-		
-		
-		//Creamos una tarea que cada X tiempo lista a los usuarios conectados 
-		TimerTask listarUsuarios = new UnreadReminders();
+		//Creamos una tarea que cada X tiempo muestra el número de mensajes no leídos utilizando un hilo secundario
+		TimerTask mostrarNoLeidos = new UnreadReminders();
 		Timer timer = new Timer(true);
-		timer.scheduleAtFixedRate(listarUsuarios, 0, 5000);
+		timer.scheduleAtFixedRate(mostrarNoLeidos, 0, 5000);
 		
 		while (funcionando) {
 			menu();
 		}
-		
-		
-		/* 	1.- Solicitar nombre de usuario
-		 * 
-		 * En un thread paralelo de manera periódica se va preguntando por el número de remainders sin leer nuevos
-		 * 
-		 	2.- Menu con opciones:
-		 			A)set remainder
-		 			B)ver remainder (numero de remainder nuevos)
-					C)salir
-			
-				A - Se le piden ciertos datos al cliente: 
-						El mensaje (cadena de texto)
-						El tiempo hasta que se envíe
-						[Si es periódico o solo una vez] Opcional.
-				B - Se muestra una lista de los remainder. 
-						Los antiguos se almacenan de manera local y se muestran de otra manera
-						Los que están sin leer se han recibido y se muestran con colores
-				C - 
-				
-El servidor tiene una lista de usuarios conectados
-Cuando un usuario establece la primera conexión, 
-comprueba si está en esa lista y si es así, envía un mensaje de error
-Cuando el cliente cierra, manda un mensaje de finde conexion
-Si el servidor no escucha nada del cliente en un minuto, 
-(job periódico) da la sesión por terminada (y guarda los datos de ese usuario en un archivo?)
-El cliente le pide el nombre de usuario y pregunta al servidor, 
-hasta que no recibe una confirmación no entra
-El cliente tiene un hilo secundario que va a estar haciendo peticiones periódicas al servidor para mostrar los recordatorios sin leer
-
-		*/
-		
-		
-
 		 
 	}
 	
@@ -86,6 +46,11 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		System.out.println("-------------------\n");
 	}
 	
+	/**
+	 * Solicita un nombre de usuario y envía esta información al servidor.
+	 * Si el servidor detecta que ya hay una sesión iniciada con ese usuario, 
+	 * devuelve unn código de fallo.
+	 */
 	public static void iniciarSesion() {
 		System.out.println("Iniciando sesion como usuario: " + nombreUsuario);
 		String resultadoInicioSesion = send("Login="+nombreUsuario);
@@ -103,6 +68,9 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		
 	}
 	
+	/**
+	 * Recuperamos el número de recordatorios sin leer del usuario
+	 */
 	public static void getRecordatoriosNum() {
 		int nuevo = Integer.parseInt(send("GetN="+nombreUsuario));
 		if (nuevo > 0) {
@@ -114,6 +82,9 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		}
 	}
 	
+	/**
+	 * Recuperamos el mensaje de todos los recordatorios 
+	 */
 	public static void getRecordatorios() {
 		String rawRecordatorios = send("Get="+nombreUsuario);
 		for(String recordatorio : rawRecordatorios.split(";")) {
@@ -134,64 +105,64 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		
 		InetAddress direcc = null;
 
-			 try {
-				
-				 // WINDOWS: 
-				  direcc = InetAddress.getByName("192.168.56.1");
-				 // LINUX:
-				 //direcc = InetAddress.getByName("127.0.1.1");
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		try {
+			
+			 // WINDOWS: 
+			  direcc = InetAddress.getByName("192.168.56.1");
+			 // LINUX:
+			 //direcc = InetAddress.getByName("127.0.1.1");
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		 
-		 
-		// Puerto que hemos usado para el servidor
-		 int puerto = 1234;
-		// Para cada uno de los argumentos...
+		int puerto = 1234;
 		
-			 Socket sckt = null;
-			 DataInputStream dis = null;
-			 DataOutputStream dos = null; 
-			 try {
-				
-				 // Creamos el Socket
-				 sckt = new Socket(direcc,puerto);
-				 // Extraemos los streams de entrada y salida
-				 dis = new DataInputStream(sckt.getInputStream());
-				 dos = new DataOutputStream(sckt.getOutputStream());
-				 
-				 
-				 dos.write(mensaje.getBytes());
-				 
-				 pck = dis.readAllBytes();
-				 respuesta = new String(pck);
-				 
-				 // y cerramos los streams y el socket
-				 dis.close();
-				 dos.close(); 
-			 }
-			 catch(Exception e)
-			 {
-				 System.err.println("Se ha producido la excepción : " +e);
-			 }
+		 Socket sckt = null;
+		 DataInputStream dis = null;
+		 DataOutputStream dos = null; 
+		 try {
+			 sckt = new Socket(direcc,puerto);
 			 
+			 dis = new DataInputStream(sckt.getInputStream());
+			 dos = new DataOutputStream(sckt.getOutputStream());
 			 
-			 try
-			 {
-				 if (sckt!=null) sckt.close();
-			 }
-			 catch(IOException ioe)
-			 {
-				 System.err.println("Error al cerrar el socket :" + ioe);
-			 } 
+			 dos.write(mensaje.getBytes());
+			 
+			 pck = dis.readAllBytes();
+			 respuesta = new String(pck);
+
+			 dis.close();
+			 dos.close(); 
+		 } catch (ConnectException ce) {
+			 //Si el servidor se cierra en algún momento, lo gestionamos aquí.
+			 System.out.println("El servidor no esta operativo en este momento.");
+			 System.exit(0);
+		 }
+		 catch(Exception e)
+		 {
+			 System.err.println("Se ha producido la excepción : " +e);
+		 }
+		 
+		 try
+		 {
+			 if (sckt!=null) sckt.close();
+		 }
+		 catch(IOException ioe)
+		 {
+			 System.err.println("Error al cerrar el socket :" + ioe);
+		 } 
 		 
 		return respuesta;
 	 }
 	
+	/**
+	 * Creamos un recordatorio nuevo
+	 */
 	public static void setRecordatorio() {
 		System.out.println("Introduce el mensaje del recordatorio:");
 		String mensaje = sc.nextLine();
+		//Evitamos mensajes vacíos
 		if(mensaje.length()<1) {
 			System.out.println("El mensaje introducido no es válido.");
 			return;
@@ -206,6 +177,9 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		System.out.println(respuesta);
 	}
 	
+	/**
+	 * Permite al servidor actualizar su lista de usuarios conectados.
+	 */
 	public static void cerrarSesion() {
 		System.out.println("Cerrando sesión.");
 		String mensaje = "Exit="+nombreUsuario;
@@ -219,9 +193,6 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 	 * Esto permite invocarlo desde el hilo secundario del timer sin afectar al scanner
 	 */
 	public static void printMenu() {
-		
-		//getRecordatoriosNum();
-		
 		System.out.println("Tienes "+sinLeer+" recordatorios no leídos");
 		
 		String[] opciones = {"1. Crear recordatorio", "2. Ver recordatorios sin leer", "0. Salir","","Recuerda: Al ver los recordatorios, estos serán eliminados."};
@@ -250,7 +221,6 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 			cerrarSesion();
 			funcionando = false;
 			break;
-			
 		}
 		
 		} catch (Exception e) {
@@ -258,5 +228,11 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 		}
 	}
 	
-
+	/**
+	 * Comprueba si el servidor está levantado mandando una petición simple.
+	 */
+	public static void comprobarServidor() {
+		send("Up");
+	}
+	
 }
