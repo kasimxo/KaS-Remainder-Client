@@ -11,6 +11,7 @@ public class ClienteTCP {
 	public static int sinLeer;
 	public static String nombreUsuario;
 	public static boolean funcionando;
+	public static boolean login;
 	
 	public static void main(String[] args) {
 		
@@ -21,19 +22,23 @@ public class ClienteTCP {
 		sc = new Scanner(System.in);
 		
 		funcionando = true;
+		login = false;
 		
-		
-		while (nombreUsuario == null) {
+		while (login == false) {
 			System.out.println("Introduce tu nombre de usuario:");
 			nombreUsuario = sc.nextLine();
+
+			iniciarSesion();
 		}
+		
+		
+		
+		
 		
 		//Creamos una tarea que cada X tiempo lista a los usuarios conectados 
 		TimerTask listarUsuarios = new UnreadReminders();
 		Timer timer = new Timer(true);
 		timer.scheduleAtFixedRate(listarUsuarios, 0, 5000);
-		
-		iniciarSesion();
 		
 		while (funcionando) {
 			menu();
@@ -84,8 +89,18 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 	public static void iniciarSesion() {
 		System.out.println("Iniciando sesion como usuario: " + nombreUsuario);
 		String resultadoInicioSesion = send("Login="+nombreUsuario);
-		System.out.println(resultadoInicioSesion);
-		getRecordatorios();
+		
+		switch (resultadoInicioSesion) {
+		case "EXITO":
+			System.out.println("Login correcto.");
+			getRecordatorios();
+			login = true;
+			break;
+		case "FALLO":
+			System.out.println("Login incorrecto, usuario ya conectado.");
+			break;
+		}
+		
 	}
 	
 	public static void getRecordatoriosNum() {
@@ -122,9 +137,9 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 			 try {
 				
 				 // WINDOWS: 
-				 // direcc = InetAddress.getByName("127.0.1.1");
+				  direcc = InetAddress.getByName("192.168.56.1");
 				 // LINUX:
-				 direcc = InetAddress.getByName("127.0.1.1");
+				 //direcc = InetAddress.getByName("127.0.1.1");
 			} catch (UnknownHostException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -177,8 +192,15 @@ El cliente tiene un hilo secundario que va a estar haciendo peticiones periódic
 	public static void setRecordatorio() {
 		System.out.println("Introduce el mensaje del recordatorio:");
 		String mensaje = sc.nextLine();
+		if(mensaje.length()<1) {
+			System.out.println("El mensaje introducido no es válido.");
+			return;
+		}
 		System.out.println("Introduce la cantidad de tiempo hasta el recordatorio en segundos:");
 		String rawSegundos = sc.nextLine();
+		if (rawSegundos.length()<1) {
+			rawSegundos = "0";
+		}
 		String input = String.format("Set=%s;%s;%s", nombreUsuario,rawSegundos,mensaje);
 		String respuesta = send(input);
 		System.out.println(respuesta);
